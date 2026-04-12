@@ -5,32 +5,87 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PBL Presentation | 2026</title>
+    <meta name="description"
+        content="Student Academic Performance Prediction using Machine Learning — A dual-model XGBoost pipeline for early intervention and high-accuracy forecasting.">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
 
+        * {
+            scroll-behavior: smooth;
+        }
+
         body {
             background-color: #020617;
             color: #f8fafc;
             font-family: 'Plus Jakarta Sans', sans-serif;
-            scroll-behavior: smooth;
+            overflow-x: hidden;
         }
 
+        /* --- Glassmorphism --- */
         .glass {
             background: rgba(255, 255, 255, 0.03);
             backdrop-filter: blur(15px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.08);
         }
 
         .gradient-text {
-            background: linear-gradient(90deg, #60a5fa, #a855f7);
+            background: linear-gradient(135deg, #60a5fa, #a855f7, #ec4899);
+            background-size: 200% 200%;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            animation: shimmer 4s ease-in-out infinite;
         }
 
-        /* TIMER UI - FIXED CONTRAST */
+        @keyframes shimmer {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        /* --- Ambient Glow --- */
+        .glow-blue {
+            box-shadow: 0 0 60px rgba(59, 130, 246, 0.15), 0 0 120px rgba(59, 130, 246, 0.05);
+        }
+        .glow-purple {
+            box-shadow: 0 0 60px rgba(168, 85, 247, 0.15), 0 0 120px rgba(168, 85, 247, 0.05);
+        }
+
+        /* --- Scroll Reveal Animations --- */
+        .reveal {
+            opacity: 0;
+            transform: translateY(40px);
+            transition: opacity 0.8s ease, transform 0.8s ease;
+        }
+        .reveal.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* --- Floating Particles --- */
+        #particles {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+        }
+        .particle {
+            position: absolute;
+            width: 3px;
+            height: 3px;
+            border-radius: 50%;
+            background: rgba(96, 165, 250, 0.25);
+            animation: float-particle linear infinite;
+        }
+        @keyframes float-particle {
+            0% { transform: translateY(100vh) scale(0); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-10vh) scale(1); opacity: 0; }
+        }
+
+        /* --- Timer UI --- */
         #timerContainer {
             background: #ffffff;
             color: #020617;
@@ -38,42 +93,76 @@
             border: 3px solid #3b82f6;
             z-index: 1000;
         }
-
         @keyframes flicker {
-
-            0%,
-            100% {
-                background-color: #ffffff;
-            }
-
-            50% {
-                background-color: #fca5a5;
-            }
+            0%, 100% { background-color: #ffffff; }
+            50% { background-color: #fca5a5; }
         }
-
         .timer-warning {
             animation: flicker 1s infinite;
             border: 3px solid #ef4444 !important;
             color: #b91c1c !important;
         }
-
         .timer-stop {
             background-color: #991b1b !important;
             color: #ffffff !important;
             border: 3px solid #f87171 !important;
             animation: none;
         }
+
+        /* --- Metric Pulse --- */
+        @keyframes pulse-ring {
+            0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+            70% { box-shadow: 0 0 0 12px rgba(59, 130, 246, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+        }
+        .metric-pulse {
+            animation: pulse-ring 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        /* --- Pipeline Flow Arrow --- */
+        .pipeline-arrow {
+            position: relative;
+        }
+        .pipeline-arrow::after {
+            content: '';
+            position: absolute;
+            bottom: -28px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 2px;
+            height: 20px;
+            background: linear-gradient(to bottom, rgba(96, 165, 250, 0.5), transparent);
+        }
+
+        /* --- Dual Model Toggle --- */
+        .model-tab {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .model-tab.active {
+            background: rgba(59, 130, 246, 0.15);
+            border-color: #3b82f6;
+            color: #60a5fa;
+        }
+        .model-tab:not(.active):hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
     </style>
 </head>
 
-<body onload="startTimer()">
+<body onload="startTimer(); initParticles(); initReveal();">
 
+    <!-- Floating Particles -->
+    <div id="particles"></div>
+
+    <!-- Timer -->
     <div id="timerContainer"
         class="fixed bottom-10 right-10 px-8 py-4 rounded-3xl flex items-center gap-4 transition-all">
         <i class="fas fa-hourglass-start text-blue-600 text-2xl" id="timerIcon"></i>
         <span id="displayTime" class="text-4xl font-black font-mono tracking-tighter">00:00</span>
     </div>
 
+    <!-- Navbar -->
     <nav class="fixed w-full z-50 glass border-b border-slate-800/50 px-8 py-4 flex justify-between items-center">
         <div class="flex items-center gap-4">
             <div class="bg-white p-1 rounded flex items-center justify-center shadow-md"
@@ -91,35 +180,39 @@
         <div class="hidden md:flex gap-8 text-[11px] uppercase tracking-widest font-bold opacity-70">
             <a href="#problem" class="hover:text-blue-400 transition">Problem</a>
             <a href="#methodology" class="hover:text-blue-400 transition">Methodology</a>
+            <a href="#models" class="hover:text-blue-400 transition">Models</a>
             <a href="#results" class="hover:text-blue-400 transition">Results</a>
             <a href="#team" class="hover:text-blue-400 transition">Team</a>
         </div>
     </nav>
 
-    <main class="max-w-6xl mx-auto px-6 pt-48 pb-32 space-y-32">
+    <main class="relative z-10 max-w-6xl mx-auto px-6 pt-48 pb-32 space-y-36">
 
-        <section class="text-center">
+        <!-- ═══════════════ HERO ═══════════════ -->
+        <section class="text-center reveal">
             <div
                 class="inline-block px-4 py-1 border border-slate-800 rounded-full text-slate-500 text-[10px] font-mono mb-6 uppercase tracking-widest">
                 ID: 2427030328</div>
-            <h1 class="text-6xl md:text-7xl font-extrabold mb-8 uppercase leading-tight"><span
-                    class="gradient-text uppercase">Student Academic Performance Prediction using Machine Learning
-                </span></h1>
-            <p
-                class="text-slate-400 max-w-2xl mx-auto italic text-lg leading-relaxed border-l-2 border-blue-500/30 pl-6 text-left">
-                "Hypothesis/Project Statement: Educational institutions often struggle to identify academically at-risk
-                students in advance. This project uses machine learning to predict student performance based on academic
-                factors and provides actionable insights to teachers for early intervention and improved outcomes."
+            <h1 class="text-5xl md:text-7xl font-extrabold mb-8 uppercase leading-tight">
+                <span class="gradient-text">Student Academic Performance Prediction using Machine Learning</span>
+            </h1>
+            <p class="text-slate-400 max-w-2xl mx-auto italic text-lg leading-relaxed border-l-2 border-blue-500/30 pl-6 text-left">
+                "Educational institutions often struggle to identify academically at-risk students in advance. This
+                project uses a <strong class="text-blue-400">dual-model XGBoost pipeline</strong> to predict student
+                performance — one for <strong class="text-blue-400">early intervention</strong> (before exams) and
+                another for <strong class="text-purple-400">high-accuracy forecasting</strong> (with interim grades)."
             </p>
         </section>
 
-        <section id="problem" class="grid md:grid-cols-2 gap-12 items-stretch">
-            <div class="glass p-10 rounded-[2.5rem] flex flex-col justify-center border-l-4 border-blue-600">
+        <!-- ═══════════════ PROBLEM STATEMENT ═══════════════ -->
+        <section id="problem" class="grid md:grid-cols-2 gap-12 items-stretch reveal">
+            <div class="glass p-10 rounded-[2.5rem] flex flex-col justify-center border-l-4 border-blue-600 glow-blue">
                 <h2 class="text-3xl font-extrabold mb-6">Problem Statement</h2>
                 <p class="text-slate-400 leading-relaxed text-justify">Institutions cannot predict student performance
                     early or identify academically at-risk students in advance. This project builds a data-driven
-                    machine learning model to help teachers recognize performance trends, identify at-risk students, and
-                    intervene in time to improve overall academic outcomes.
+                    machine learning pipeline — powered by <strong class="text-blue-400">XGBoost</strong> — to help
+                    teachers recognize performance trends, identify at-risk students, and intervene in time to improve
+                    overall academic outcomes.
                 </p>
             </div>
             <div class="space-y-6">
@@ -140,22 +233,20 @@
                             </li>
                             <li>
                                 <strong class="text-blue-400">Thakar et al. (2024):</strong> Developed a combined
-                                machine-learning model to predict employability and academic readiness. Integrates
-                                multiple academic and behavioural factors. <span
+                                machine-learning model to predict employability and academic readiness. <span
                                     class="text-slate-600 block mt-1 italic">Limitation: More suitable for
                                     employability studies rather than school-level analysis.</span>
                             </li>
                             <li>
                                 <strong class="text-blue-400">Darshini (2024):</strong> Examined academic, personal and
-                                family-related variables to analyse their influence on student outcomes. Provides a
-                                holistic view of performance determinants. <span
+                                family-related variables to analyse their influence on student outcomes. <span
                                     class="text-slate-600 block mt-1 italic">Limitation: Does not include practical
                                     improvement strategies.</span>
                             </li>
                             <li>
                                 <strong class="text-blue-400">Kumar & Behera (2023):</strong> Applied models like Random
-                                Forest and SVM to identify academically at-risk learners. Enables early detection of
-                                struggling students. <span class="text-slate-600 block mt-1 italic">Limitation: Dataset
+                                Forest and SVM to identify academically at-risk learners. <span
+                                    class="text-slate-600 block mt-1 italic">Limitation: Dataset
                                     size and diversity are limited.</span>
                             </li>
                         </ul>
@@ -167,21 +258,19 @@
                     <div class="text-sm text-slate-500 text-left space-y-4">
                         <ul class="list-disc pl-4 space-y-3 marker:text-purple-500">
                             <li>
-                                <strong class="text-purple-400">Broader Scope:</strong> Unlike existing approaches
-                                focused
-                                only on exam-based or online environments, this model covers <span
-                                    class="italic">holistic
-                                    academic performance</span>.
+                                <strong class="text-purple-400">Dual-Model Pipeline:</strong> Unlike single-model
+                                approaches, this project deploys <span class="italic">two specialized XGBoost
+                                    models</span> — a Holistic model for early-semester risk detection and a
+                                Grade-Based model for high-accuracy mid-semester predictions.
                             </li>
                             <li>
                                 <strong class="text-purple-400">Actionable Insights:</strong> Goes beyond prediction to
                                 offer teachers specific guidance for <span class="italic">early intervention and
-                                    improved
-                                    learning support</span>.
+                                    improved learning support</span>.
                             </li>
                             <li>
-                                <strong class="text-purple-400">Risk Identification:</strong> Proactively identifies
-                                students at academic risk to enable timely support.
+                                <strong class="text-purple-400">Production-Ready API:</strong> Includes a Flask-based
+                                REST API with schema validation, error handling, and live prediction endpoints.
                             </li>
                         </ul>
                     </div>
@@ -189,98 +278,312 @@
             </div>
         </section>
 
-        <section id="methodology" class="space-y-12">
+        <!-- ═══════════════ METHODOLOGY ═══════════════ -->
+        <section id="methodology" class="space-y-12 reveal">
             <h2 class="text-4xl font-black text-center uppercase tracking-tight">System <span
                     class="text-blue-500">Methodology</span></h2>
-            <div class="grid md:grid-cols-3 gap-8">
-                <div class="glass p-8 rounded-3xl text-center">
-                    <i class="fas fa-database text-blue-500 text-3xl mb-4"></i>
-                    <h3 class="font-bold mb-2 uppercase text-xs tracking-widest">Dataset / Input</h3>
-                    <div class="text-sm text-slate-500 text-left space-y-4">
-                        <p>The dataset was obtained from the <strong class="text-slate-400">UCI Machine Learning
-                                Repository</strong> with <strong class="text-slate-400">395 student records</strong> and
-                            <strong class="text-slate-400">33 attributes</strong>.
-                        </p>
 
-                        <div>
-                            <span class="font-bold text-slate-400 block mb-2 text-xs uppercase tracking-wider">Key
-                                Attributes:</span>
-                            <ul class="list-disc pl-4 space-y-1 marker:text-blue-500">
-                                <li>Academic, demographic, and behavioral factors.</li>
-                                <li>Examples: Study time, attendance, family background, assessment scores.</li>
-                            </ul>
-                        </div>
-
-                        <div>
-                            <span
-                                class="font-bold text-slate-400 block mb-2 text-xs uppercase tracking-wider">Preprocessing
-                                Steps:</span>
-                            <ul class="list-disc pl-4 space-y-1 marker:text-blue-500">
-                                <li>Encoded categorical variables to numerical format.</li>
-                                <li>Handled missing or inconsistent values.</li>
-                                <li>Removed irrelevant features.</li>
-                            </ul>
-                        </div>
-
-                        <p>Data was divided into training/testing sets using an <strong class="text-slate-400">80–20
-                                split</strong> to ensure proper model evaluation and predict overall student
-                            performance.</p>
+            <!-- Pipeline Steps -->
+            <div class="grid md:grid-cols-4 gap-6">
+                <div class="glass p-6 rounded-3xl text-center pipeline-arrow">
+                    <div
+                        class="w-12 h-12 mx-auto rounded-2xl bg-blue-500/10 flex items-center justify-center mb-4 border border-blue-500/20">
+                        <i class="fas fa-database text-blue-400 text-lg"></i>
                     </div>
+                    <h3 class="font-bold mb-2 uppercase text-[10px] tracking-widest text-blue-400">1. Data Collection
+                    </h3>
+                    <p class="text-xs text-slate-500">UCI Repository — <strong class="text-slate-400">395
+                            records</strong>, <strong class="text-slate-400">33 features</strong> covering academics,
+                        demographics & behavior.</p>
                 </div>
-                <div class="glass p-8 rounded-3xl text-center">
-                    <i class="fas fa-microchip text-purple-500 text-3xl mb-4"></i>
-                    <h3 class="font-bold mb-2 uppercase text-xs tracking-widest">Model / Architecture</h3>
-                    <div class="text-sm text-slate-500 text-left space-y-4">
-                        <p>The project follows a structured ML workflow with an <strong class="text-slate-400">80-20
-                                train-test split</strong>.</p>
-
-                        <div>
-                            <span
-                                class="font-bold text-slate-400 block mb-2 text-xs uppercase tracking-wider">Predictive
-                                Models Implemented:</span>
-                            <ul class="list-disc pl-4 space-y-2 marker:text-purple-500">
-                                <li><strong class="text-purple-400">Linear Regression:</strong> Baseline model.</li>
-                                <li><strong class="text-purple-400">Decision Tree:</strong> Captures non-linear
-                                    relationships.</li>
-                                <li><strong class="text-purple-400">Random Forest:</strong> Ensemble method for better
-                                    generalization.</li>
-                            </ul>
-                        </div>
-
-                        <p>Models were evaluated using <strong class="text-slate-400">R², MAE, and RMSE</strong> to
-                            select the best performer for final predictions.</p>
+                <div class="glass p-6 rounded-3xl text-center pipeline-arrow">
+                    <div
+                        class="w-12 h-12 mx-auto rounded-2xl bg-purple-500/10 flex items-center justify-center mb-4 border border-purple-500/20">
+                        <i class="fas fa-broom text-purple-400 text-lg"></i>
                     </div>
+                    <h3 class="font-bold mb-2 uppercase text-[10px] tracking-widest text-purple-400">2. Preprocessing
+                    </h3>
+                    <p class="text-xs text-slate-500">Label-encoded categoricals, handled missing values, removed
+                        irrelevant features, <strong class="text-slate-400">80-20 train-test split</strong>.</p>
                 </div>
-                <div class="glass p-8 rounded-3xl text-center border-2 border-green-500/20 bg-green-500/5">
-                    <i class="fab fa-python text-green-500 text-3xl mb-4"></i>
-                    <h3 class="font-bold mb-4 uppercase text-xs tracking-widest text-green-400">Live Execution</h3>
-                    <a href="https://github.com/harshal2006/student-performance-ml/tree/main" target="_blank"
-                        class="px-6 py-2 bg-green-600 rounded-full text-[10px] font-black hover:bg-green-500 transition shadow-lg shadow-green-900/40">VIEW
-                        CODE / DEMO</a>
+                <div class="glass p-6 rounded-3xl text-center pipeline-arrow">
+                    <div
+                        class="w-12 h-12 mx-auto rounded-2xl bg-cyan-500/10 flex items-center justify-center mb-4 border border-cyan-500/20">
+                        <i class="fas fa-brain text-cyan-400 text-lg"></i>
+                    </div>
+                    <h3 class="font-bold mb-2 uppercase text-[10px] tracking-widest text-cyan-400">3. Model Training
+                    </h3>
+                    <p class="text-xs text-slate-500">Trained <strong class="text-slate-400">5 models</strong>: Linear
+                        Regression, Decision Tree, Random Forest, <strong class="text-slate-400">XGBoost
+                            (Holistic)</strong>, <strong class="text-slate-400">XGBoost (Grade)</strong>.</p>
+                </div>
+                <div class="glass p-6 rounded-3xl text-center">
+                    <div
+                        class="w-12 h-12 mx-auto rounded-2xl bg-green-500/10 flex items-center justify-center mb-4 border border-green-500/20">
+                        <i class="fas fa-rocket text-green-400 text-lg"></i>
+                    </div>
+                    <h3 class="font-bold mb-2 uppercase text-[10px] tracking-widest text-green-400">4. Deployment</h3>
+                    <p class="text-xs text-slate-500">Flask REST API with <strong class="text-slate-400">/predict</strong>,
+                        <strong class="text-slate-400">/schema</strong>, and <strong
+                            class="text-slate-400">/health</strong> endpoints.</p>
+                </div>
+            </div>
+
+            <!-- Dataset Detail Card -->
+            <div class="glass p-8 rounded-3xl border-t-2 border-blue-500/30">
+                <div class="grid md:grid-cols-3 gap-8">
+                    <div>
+                        <h4 class="text-blue-400 font-bold text-xs uppercase tracking-widest mb-3">Dataset Source</h4>
+                        <p class="text-sm text-slate-500">UCI Machine Learning Repository — <strong
+                                class="text-slate-400">student-mat.csv</strong></p>
+                        <p class="text-sm text-slate-500 mt-2">395 students × 33 attributes including study time,
+                            attendance, family background, and interim grades (G1, G2).</p>
+                    </div>
+                    <div>
+                        <h4 class="text-purple-400 font-bold text-xs uppercase tracking-widest mb-3">Features Used</h4>
+                        <ul class="text-xs text-slate-500 space-y-1 list-disc pl-4 marker:text-purple-500">
+                            <li>Demographics: age, address, family size</li>
+                            <li>Family: parents' education & jobs</li>
+                            <li>Lifestyle: study time, free time, alcohol</li>
+                            <li>Academic: absences, failures, G1, G2</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="text-cyan-400 font-bold text-xs uppercase tracking-widest mb-3">Preprocessing</h4>
+                        <ul class="text-xs text-slate-500 space-y-1 list-disc pl-4 marker:text-cyan-500">
+                            <li>Categorical → Label Encoding</li>
+                            <li>Missing value imputation</li>
+                            <li>Feature selection (removed noise)</li>
+                            <li>80-20 stratified train/test split</li>
+                        </ul>
+                    </div>
                 </div>
             </div>
         </section>
 
-        <section id="results" class="glass p-12 rounded-[3.5rem] border-t-4 border-blue-500">
-            <h2 class="text-3xl font-black mb-12 text-center uppercase tracking-tight">Results & <span
+        <!-- ═══════════════ DUAL MODEL ARCHITECTURE ═══════════════ -->
+        <section id="models" class="space-y-12 reveal">
+            <h2 class="text-4xl font-black text-center uppercase tracking-tight">Dual-Model <span
+                    class="text-purple-500">Architecture</span></h2>
+            <p class="text-center text-slate-500 text-sm max-w-2xl mx-auto -mt-6">Our innovation: two specialized
+                XGBoost models serving different stages of the academic cycle.</p>
+
+            <div class="grid md:grid-cols-2 gap-8">
+                <!-- Holistic Model -->
+                <div class="glass p-8 rounded-[2rem] border-l-4 border-blue-500 glow-blue">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div
+                            class="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center border border-blue-500/30">
+                            <i class="fas fa-eye text-blue-400"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-black text-lg text-white leading-none">Holistic Model</h3>
+                            <p class="text-[10px] text-blue-400 uppercase tracking-widest font-bold mt-1">Early Warning
+                                System</p>
+                        </div>
+                    </div>
+                    <div class="space-y-4 text-sm text-slate-500">
+                        <div class="flex items-start gap-3">
+                            <i class="fas fa-arrow-right text-blue-500 text-xs mt-1.5"></i>
+                            <p><strong class="text-slate-300">Inputs:</strong> Lifestyle & demographics ONLY — no exam
+                                scores (G1, G2).</p>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <i class="fas fa-arrow-right text-blue-500 text-xs mt-1.5"></i>
+                            <p><strong class="text-slate-300">Use Case:</strong> Counselors use it on <strong
+                                    class="text-blue-400">Day 1</strong> of the semester to flag at-risk students.</p>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <i class="fas fa-arrow-right text-blue-500 text-xs mt-1.5"></i>
+                            <p><strong class="text-slate-300">Performance:</strong> R² ≈ 0.29 — lower accuracy but
+                                provides actionable early insight.</p>
+                        </div>
+                    </div>
+                    <div class="mt-6 p-4 rounded-xl bg-blue-500/5 border border-blue-500/15 text-center">
+                        <span class="text-xs text-slate-600 uppercase tracking-widest font-bold">R² Score</span>
+                        <p class="text-3xl font-black text-blue-400 font-mono mt-1">0.29</p>
+                    </div>
+                </div>
+
+                <!-- Grade-Based Model -->
+                <div class="glass p-8 rounded-[2rem] border-l-4 border-purple-500 glow-purple">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div
+                            class="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center border border-purple-500/30">
+                            <i class="fas fa-chart-line text-purple-400"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-black text-lg text-white leading-none">Grade-Based Model</h3>
+                            <p class="text-[10px] text-purple-400 uppercase tracking-widest font-bold mt-1">
+                                High-Accuracy Forecasting</p>
+                        </div>
+                    </div>
+                    <div class="space-y-4 text-sm text-slate-500">
+                        <div class="flex items-start gap-3">
+                            <i class="fas fa-arrow-right text-purple-500 text-xs mt-1.5"></i>
+                            <p><strong class="text-slate-300">Inputs:</strong> Lifestyle + Interim Grades
+                                (<strong class="text-purple-400">G1, G2</strong>).</p>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <i class="fas fa-arrow-right text-purple-500 text-xs mt-1.5"></i>
+                            <p><strong class="text-slate-300">Use Case:</strong> Final grade projections <strong
+                                    class="text-purple-400">midway through the year</strong>.</p>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <i class="fas fa-arrow-right text-purple-500 text-xs mt-1.5"></i>
+                            <p><strong class="text-slate-300">Performance:</strong> R² ≈ 0.77 (XGBoost) to 0.81 (Random
+                                Forest) — high-accuracy prediction.</p>
+                        </div>
+                    </div>
+                    <div class="mt-6 p-4 rounded-xl bg-purple-500/5 border border-purple-500/15 text-center">
+                        <span class="text-xs text-slate-600 uppercase tracking-widest font-bold">R² Score</span>
+                        <p class="text-3xl font-black text-purple-400 font-mono mt-1">0.77</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ═══════════════ RESULTS ═══════════════ -->
+        <section id="results" class="glass p-12 rounded-[3.5rem] border-t-4 border-blue-500 glow-blue reveal">
+            <h2 class="text-3xl font-black mb-4 text-center uppercase tracking-tight">Results & <span
                     class="text-blue-500">Analysis</span></h2>
+            <p class="text-center text-slate-500 text-sm mb-12 max-w-xl mx-auto">Model performance comparison across
+                all five implemented algorithms, evaluated using R² score.</p>
+
             <div class="grid md:grid-cols-2 gap-16 items-center">
                 <div class="h-80"><canvas id="resultsChart"></canvas></div>
                 <div class="space-y-6">
+                    <!-- Metric Cards -->
                     <div
-                        class="p-6 rounded-2xl bg-white/5 flex justify-between items-center border border-white/10 shadow-inner">
-                        <span class="text-slate-400 font-bold uppercase text-xs tracking-widest">Best Model
-                            Performance</span>
-                        <span class="text-blue-400 font-mono font-black text-3xl">81% (R² Score)</span>
+                        class="p-5 rounded-2xl bg-white/5 border border-white/10 shadow-inner flex justify-between items-center">
+                        <div>
+                            <span class="text-slate-500 font-bold uppercase text-[10px] tracking-widest block">Best
+                                Overall R²</span>
+                            <span class="text-[10px] text-slate-600">Random Forest (Grade-Based)</span>
+                        </div>
+                        <span
+                            class="text-blue-400 font-mono font-black text-3xl metric-pulse rounded-xl px-3 py-1">0.81</span>
                     </div>
-                    <p class="text-slate-500 text-sm italic text-justify leading-relaxed">The models were evaluated
-                        using R², MAE, and RMSE. Random Forest achieved the highest R² score (~0.81), demonstrating
-                        better generalization and reduced overfitting compared to other models.</p>
+                    <div
+                        class="p-5 rounded-2xl bg-white/5 border border-white/10 shadow-inner flex justify-between items-center">
+                        <div>
+                            <span class="text-slate-500 font-bold uppercase text-[10px] tracking-widest block">XGBoost
+                                Grade</span>
+                            <span class="text-[10px] text-slate-600">With G1 & G2 interim scores</span>
+                        </div>
+                        <span class="text-purple-400 font-mono font-black text-2xl">0.77</span>
+                    </div>
+                    <div
+                        class="p-5 rounded-2xl bg-white/5 border border-white/10 shadow-inner flex justify-between items-center">
+                        <div>
+                            <span class="text-slate-500 font-bold uppercase text-[10px] tracking-widest block">XGBoost
+                                Holistic</span>
+                            <span class="text-[10px] text-slate-600">No grades — early semester</span>
+                        </div>
+                        <span class="text-cyan-400 font-mono font-black text-2xl">0.29</span>
+                    </div>
+
+                    <!-- Algorithm Comparison Table -->
+                    <div class="mt-4">
+                        <h4 class="text-[10px] font-bold text-slate-600 uppercase tracking-widest mb-3">Algorithm
+                            Comparison</h4>
+                        <table class="w-full text-xs text-slate-500">
+                            <thead>
+                                <tr class="border-b border-slate-800">
+                                    <th class="text-left py-2 text-slate-400">Feature</th>
+                                    <th class="text-center py-2 text-blue-400">Random Forest</th>
+                                    <th class="text-center py-2 text-purple-400">XGBoost</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="border-b border-slate-800/50">
+                                    <td class="py-2">Ensemble Style</td>
+                                    <td class="text-center">Bagging</td>
+                                    <td class="text-center">Boosting</td>
+                                </tr>
+                                <tr class="border-b border-slate-800/50">
+                                    <td class="py-2">Stability</td>
+                                    <td class="text-center text-green-400">High</td>
+                                    <td class="text-center text-yellow-400">Medium</td>
+                                </tr>
+                                <tr class="border-b border-slate-800/50">
+                                    <td class="py-2">Accuracy (this set)</td>
+                                    <td class="text-center text-blue-400 font-bold">0.81</td>
+                                    <td class="text-center">0.77</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2">Industry Status</td>
+                                    <td class="text-center">Legacy</td>
+                                    <td class="text-center text-purple-400 font-bold">State-of-Art</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </section>
 
-        <section id="team" class="text-center pt-10 border-t border-slate-900">
+        <!-- ═══════════════ ENGINEERING JOURNEY ═══════════════ -->
+        <section class="space-y-8 reveal">
+            <h2 class="text-4xl font-black text-center uppercase tracking-tight">Engineering <span
+                    class="text-cyan-500">Journey</span></h2>
+            <p class="text-center text-slate-500 text-sm max-w-xl mx-auto -mt-4">The evolution from over-engineered
+                complexity to clean, production-ready simplicity.</p>
+
+            <div class="grid md:grid-cols-3 gap-6">
+                <div class="glass p-6 rounded-3xl border-t-2 border-red-500/30">
+                    <div class="flex items-center gap-2 mb-4">
+                        <span
+                            class="text-[10px] font-black text-red-400 uppercase tracking-widest bg-red-500/10 px-3 py-1 rounded-full">Phase
+                            1</span>
+                    </div>
+                    <h4 class="font-bold text-sm mb-2 text-slate-200">Over-Engineering</h4>
+                    <p class="text-xs text-slate-500 leading-relaxed">Initial attempts with K-Means Clustering and heavy
+                        feature engineering caused R² to <strong class="text-red-400">drop from 0.29 → 0.21</strong>.
+                        On a 395-row dataset, complexity added noise.</p>
+                </div>
+                <div class="glass p-6 rounded-3xl border-t-2 border-yellow-500/30">
+                    <div class="flex items-center gap-2 mb-4">
+                        <span
+                            class="text-[10px] font-black text-yellow-400 uppercase tracking-widest bg-yellow-500/10 px-3 py-1 rounded-full">Phase
+                            2</span>
+                    </div>
+                    <h4 class="font-bold text-sm mb-2 text-slate-200">Simplification</h4>
+                    <p class="text-xs text-slate-500 leading-relaxed">Removed clustering, focused on raw high-value
+                        behavioral features, and stabilized XGBoost hyperparameters for <strong
+                            class="text-yellow-400">small-data robustness</strong>.</p>
+                </div>
+                <div class="glass p-6 rounded-3xl border-t-2 border-green-500/30">
+                    <div class="flex items-center gap-2 mb-4">
+                        <span
+                            class="text-[10px] font-black text-green-400 uppercase tracking-widest bg-green-500/10 px-3 py-1 rounded-full">Phase
+                            3</span>
+                    </div>
+                    <h4 class="font-bold text-sm mb-2 text-slate-200">Dual-Model Architecture</h4>
+                    <p class="text-xs text-slate-500 leading-relaxed">Split into two workflows: <strong
+                            class="text-blue-400">Holistic</strong> (early warning, no grades) and <strong
+                            class="text-purple-400">Grade-Based</strong> (high accuracy, with G1/G2).</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ═══════════════ LIVE DEMO ═══════════════ -->
+        <section class="reveal">
+            <div
+                class="glass p-10 rounded-[2.5rem] text-center border-2 border-green-500/20 bg-gradient-to-br from-green-500/5 to-transparent">
+                <i class="fab fa-python text-green-500 text-4xl mb-4"></i>
+                <h3 class="font-black text-2xl uppercase tracking-tight mb-2 text-white">View on GitHub</h3>
+                <p class="text-sm text-slate-500 mb-6 max-w-md mx-auto">Full source code including Jupyter notebooks,
+                    Flask API, serialized models, and automated tests.</p>
+                <a href="https://github.com/harshal2006/student-performance-ml/tree/main" target="_blank"
+                    class="inline-block px-8 py-3 bg-green-600 rounded-full text-xs font-black hover:bg-green-500 transition-all shadow-lg shadow-green-900/40 hover:scale-105 uppercase tracking-widest">
+                    <i class="fas fa-code mr-2"></i>View Code / Demo
+                </a>
+            </div>
+        </section>
+
+        <!-- ═══════════════ TEAM ═══════════════ -->
+        <section id="team" class="text-center pt-10 border-t border-slate-900 reveal">
             <h2 class="text-[10px] font-black text-slate-600 uppercase tracking-[0.5em] mb-12">Academic Credits</h2>
             <div class="flex flex-wrap justify-center gap-10">
                 <div class="glass px-12 py-8 rounded-[2rem] border-b-4 border-blue-600">
@@ -296,14 +599,14 @@
         </section>
     </main>
 
-    <footer class="py-12 text-center bg-black/40 border-t border-slate-900">
+    <footer class="relative z-10 py-12 text-center bg-black/40 border-t border-slate-900">
         <p class="text-slate-600 text-[10px] font-bold tracking-[0.3em] uppercase mb-2">Manipal University Jaipur</p>
         <p class="text-slate-500 text-[9px] font-medium tracking-[0.2em] uppercase opacity-50">Department of Computer
             Science & Engineering • 2026</p>
     </footer>
 
     <script>
-        // TIMER LOGIC
+        // ═══════════════ TIMER LOGIC ═══════════════
         let sec = 0;
         let timer = null;
         function startTimer() {
@@ -313,10 +616,10 @@
                 let s = sec % 60;
                 document.getElementById('displayTime').innerText = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 
-                if (sec >= 480 && sec < 600) { // 8-10 Mins Warning
+                if (sec >= 480 && sec < 600) {
                     document.getElementById('timerContainer').classList.add('timer-warning');
                     document.getElementById('timerIcon').classList.replace('fa-hourglass-start', 'fa-hourglass-half');
-                } else if (sec >= 600) { // 10 Mins Stop
+                } else if (sec >= 600) {
                     clearInterval(timer);
                     document.getElementById('timerContainer').classList.replace('timer-warning', 'timer-stop');
                     document.getElementById('displayTime').innerText = "10:00";
@@ -325,26 +628,101 @@
             }, 1000);
         }
 
-        // RESULTS CHART (Demo Data)
+        // ═══════════════ PARTICLES ═══════════════
+        function initParticles() {
+            const container = document.getElementById('particles');
+            for (let i = 0; i < 30; i++) {
+                const p = document.createElement('div');
+                p.className = 'particle';
+                p.style.left = Math.random() * 100 + '%';
+                p.style.animationDuration = (8 + Math.random() * 12) + 's';
+                p.style.animationDelay = Math.random() * 10 + 's';
+                p.style.width = (2 + Math.random() * 3) + 'px';
+                p.style.height = p.style.width;
+                if (Math.random() > 0.5) p.style.background = 'rgba(168, 85, 247, 0.2)';
+                container.appendChild(p);
+            }
+        }
+
+        // ═══════════════ SCROLL REVEAL ═══════════════
+        function initReveal() {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('visible');
+                    }
+                });
+            }, { threshold: 0.1 });
+
+            document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+        }
+
+        // ═══════════════ RESULTS CHART ═══════════════
         const ctx = document.getElementById('resultsChart').getContext('2d');
         new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: ['Linear Regression', 'Decision Tree', 'Random Forest'],
+                labels: ['Linear Reg.', 'Decision Tree', 'Random Forest', 'XGB Holistic', 'XGB Grade'],
                 datasets: [{
-                    data: [72, 73, 81],
-                    backgroundColor: ['#94a3b8', '#a855f7', '#3b82f6'],
-                    borderRadius: 15,
-                    barThickness: 50
+                    label: 'R² Score (%)',
+                    data: [72, 73, 81, 29, 77],
+                    backgroundColor: [
+                        'rgba(148, 163, 184, 0.8)',
+                        'rgba(251, 191, 36, 0.8)',
+                        'rgba(59, 130, 246, 0.8)',
+                        'rgba(34, 211, 238, 0.8)',
+                        'rgba(168, 85, 247, 0.8)'
+                    ],
+                    borderColor: [
+                        'rgb(148, 163, 184)',
+                        'rgb(251, 191, 36)',
+                        'rgb(59, 130, 246)',
+                        'rgb(34, 211, 238)',
+                        'rgb(168, 85, 247)'
+                    ],
+                    borderWidth: 2,
+                    borderRadius: 12,
+                    barThickness: 40
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: '#1e293b',
+                        titleColor: '#f8fafc',
+                        bodyColor: '#94a3b8',
+                        borderColor: '#334155',
+                        borderWidth: 1,
+                        cornerRadius: 12,
+                        padding: 12,
+                        callbacks: {
+                            label: function (context) {
+                                return `R² Score: ${context.raw}%`;
+                            }
+                        }
+                    }
+                },
                 scales: {
-                    y: { beginAtZero: true, grid: { color: '#ffffff05' }, ticks: { color: '#475569' } },
-                    x: { grid: { display: false }, ticks: { color: '#475569' } }
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        grid: { color: 'rgba(255,255,255,0.03)' },
+                        ticks: {
+                            color: '#475569',
+                            font: { size: 10, family: 'Plus Jakarta Sans' },
+                            callback: function (value) { return value + '%'; }
+                        }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: {
+                            color: '#475569',
+                            font: { size: 9, family: 'Plus Jakarta Sans', weight: 'bold' }
+                        }
+                    }
                 }
             }
         });
